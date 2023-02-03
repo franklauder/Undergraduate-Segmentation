@@ -1,0 +1,489 @@
+---
+title: "Undergraduate Cluster Analysis"
+author: "Frank Laudert"
+date: "2022-05-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+# Introduction
+
+<br/><br/>
+
+
+
+<br/><br/>
+
+
+```{r}
+
+
+library(reticulate)
+
+library(rmarkdown)
+
+library(dplyr)
+
+library(visdat)
+
+library(plotly)
+
+library(ggplot2)
+
+library(scales)
+
+library(gridExtra)
+
+library(pander)
+
+library(ggtext)
+
+library(ggpubr)
+
+library(forcats)
+
+library(lubridate)
+
+library(data.table)
+
+library(ggrepel)
+
+library(tidyverse)
+
+library(ggmap)
+
+
+
+
+
+
+```
+
+```{r}
+
+
+
+library(ggpubr)
+
+theme_set(theme_pubr())
+
+
+
+```
+
+
+
+
+
+```{r}
+
+
+
+ug_clust_v3<-ug_clust_v2 %>% 
+  select(-citizen_of, -citizenship_sts, -english_your_primary_language, -enrolled_spring, -lhp_state, -loc_cde, -year)
+
+
+
+```
+
+
+
+
+# Explatory Data Analysis
+
+<br/><br/>
+
+
+
+
+<br/><br/>
+
+
+```{r}
+
+
+
+
+mis_val<-vis_miss(ug_clust_v3, cluster=TRUE,sort_miss = TRUE)
+
+
+```
+
+
+
+
+```{r}
+
+
+mis_val
+
+
+
+```
+
+
+
+
+
+
+```{r}
+
+
+gender_sub<-ug_clust_v3 %>% 
+  count(gender)
+
+
+
+```
+
+
+
+
+```{r}
+
+
+
+gender_plt <- plot_ly(gender_sub, labels = ~gender, values = ~n, type = 'pie')
+               
+  
+  
+
+gender_plt <- gender_plt %>% layout(title = 'Enrollment by Gender',
+
+         xaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE),
+
+         yaxis = list(showgrid = FALSE, zeroline = FALSE, showticklabels = FALSE))
+
+
+
+```
+
+
+
+
+```{r}
+
+
+gender_plt
+
+
+
+
+```
+
+
+
+
+
+```{r}
+
+
+deg_cnt_all<- ug_clust_v3%>% 
+  count(degr_cde, name="Count")
+
+
+
+```
+
+
+
+```{r}
+
+
+prog_cnt<-ug_clust_v3 %>% 
+  count(prog_cde) %>% 
+  mutate(perc=round(n/sum(n),3)) %>% 
+  slice_max(perc, n=11)
+
+
+```
+
+
+```{r}
+
+
+prog_plot<-ggplot(prog_cnt, aes(x = reorder(prog_cde, -perc), y = perc, fill=prog_cde))+ 
+  geom_bar(stat = "identity")+
+  labs(x = "Program", y = "Percent", fill = "Program")+
+  scale_y_continuous(labels=scales::percent_format())+
+  #geom_text(aes(label=percent(perc),
+                #y=perc + .03),
+           # position=position_dodge(0.9),
+            #vjust=0.8)+
+  theme(plot.title = element_text(color="blue", size=14, face="bold.italic", hjust=0.5),
+    axis.ticks.x=element_blank(),legend.position = "none")+
+   theme(axis.ticks.x=element_blank())+
+  theme(axis.text.x=element_text(angle=70, size=10,hjust=1),axis.title.x=element_blank(),
+        axis.title.y=element_blank())+
+  ggtitle("Program by Percentage of Enrollment")
+
+
+
+```
+
+
+
+
+```{r}
+
+
+prog_plot
+
+
+```
+
+
+
+
+
+```{r}
+
+
+rac_clust_all<-ug_clust_v3 %>% 
+  count(race) %>% 
+  mutate(perc=n/sum(n))
+
+
+
+```
+
+
+
+
+
+
+
+```{r}
+
+
+race_plot<-ggplot(rac_clust_all, aes(x = reorder(race, -perc), y = perc, fill=race))+ 
+  geom_bar(stat = "identity")+
+  labs(x = "Race", y = "Percent", fill = "Race")+
+  scale_y_continuous(labels=scales::percent_format())+
+  #geom_text(aes(label=percent(perc),
+                #y=perc + .03),
+            #position=position_dodge(0.9),
+            #vjust=0.8)+
+  theme(plot.title = element_text(color="blue", size=14, face="bold.italic", hjust=0.5),
+    axis.ticks.x=element_blank(),legend.position = "none")+
+   theme(axis.ticks.x=element_blank(),axis.title.x=element_blank(),
+        axis.title.y=element_blank())+
+  theme(axis.text.x=element_text(angle=70, size=10,hjust=1))+
+  ggtitle("Race as Percentage of Enrollment")
+
+
+
+```
+
+
+
+
+
+
+
+```{r}
+
+
+
+
+race_plot
+
+
+```
+
+
+
+
+
+
+
+```{r}
+
+
+
+enroll_status_cnt_ug_all<-ug_clust_v3 %>% 
+  count(term_enrolled_sts, name="count") %>% 
+  mutate(perc=count/sum(count))
+
+
+```
+
+
+
+```{r}
+
+
+enroll_stats_bar_ug_all<-ggplot(data=enroll_status_cnt_ug_all, aes(x=term_enrolled_sts, y=perc,
+                                        fill=term_enrolled_sts))+ 
+  geom_bar(stat="identity")+
+  #scale_y_continuous(labels =scales::label_number(accuracy=0.1))+
+  scale_y_continuous(labels=scales::percent_format())+
+    #geom_text(aes(label=percent(perc),
+                #y=perc + .05),
+           # position=position_dodge(0.9),
+            #vjust=0.9)+
+  theme(axis.title.x=element_blank(),
+        axis.title.y=element_blank(),plot.title = element_text(color="blue", size=14, face="bold.italic", hjust=0.5),axis.ticks.x=element_blank(),legend.position = "none")+
+  ggtitle("Enrollment Status by Percentage of Enrollment")
+
+
+
+```
+
+
+
+```{r}
+
+
+enroll_stats_bar_ug_all
+
+
+
+
+```
+
+
+
+
+
+
+```{r}
+
+
+
+zip_cnt<-ug_clust_v3 %>% 
+  count(lhp_city, name="Count") %>% 
+  slice_max(Count, n=20) %>% 
+  arrange(desc(Count))
+
+
+
+```
+
+
+
+```{r}
+
+
+city_plt<-ggplot(zip_cnt, aes(x = fct_reorder(lhp_city, Count), y = Count, fill=lhp_city))+ 
+  geom_col()+
+  labs(x = "City", y = "Count", fill = "City")+
+  #geom_text(aes(label=Count),
+            #position=position_dodge(.9),
+            #vjust=2.2)+
+  theme(plot.title = element_text(color="blue", size=14, face="bold.italic", hjust=0.5),
+    axis.ticks.x=element_blank(),axis.ticks.y=element_blank(),legend.position = "none")+
+
+  theme(axis.text.x=element_text(angle=70, size=10,hjust=1.0), axis.title.x=element_blank(),
+    axis.title.y=element_blank())+
+  ggtitle("Cities by Total Cou
+
+
+
+```
+
+
+
+
+
+
+
+```{r}
+
+
+
+city_plt
+
+
+
+```
+
+
+
+# Clustering-The Gower Distance
+
+<br/><br/>
+
+We will use the R package Gower to segment the Undergraduate data set into clusters.  
+
+This package uses the Gower Distance between units in a dataset.  The Gower Distance is used to measure how different two records are (dissimilarity).  This method of calculating distance between records was chosen due to its ability to handle records containing combinations of  different data types such as logical, numerical or categorical. 
+
+
+
+```{r}
+
+
+
+
+
+
+
+
+```
+
+
+
+
+
+```{r}
+
+
+
+
+
+
+
+
+```
+
+
+
+
+
+```{r}
+
+
+
+
+
+
+
+
+```
+
+
+
+
+```{r}
+
+
+
+
+
+
+
+
+```
+
+
+
+
+
+```{r}
+
+
+
+
+
+
+
+
+
+```
+
